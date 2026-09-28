@@ -28,11 +28,15 @@ function getUserId() {
   return _userId;
 }
 
-/**
- * Get the Supabase client (used by other modules)
- */
 function getSupabase() {
   return _supabase;
+}
+
+function getDb() {
+  return {
+    supabase: _supabase,
+    getUserId: getUserId
+  };
 }
 
 /**
@@ -59,7 +63,8 @@ async function ensureProfileAndLoadData() {
  * Get all training days for the current user, sorted by sort_order.
  */
 async function getTrainingDays() {
-  const { data, error } = await supabase
+  if (!_supabase) throw new Error('Database not initialized - call initDb first');
+  const { data, error } = await _supabase
     .from('training_days')
     .select('*')
     .eq('user_id', getUserId())
@@ -72,7 +77,8 @@ async function getTrainingDays() {
  * Create a new training day for the current user.
  */
 async function createTrainingDay({ name }) {
-  const { data, error } = await supabase
+  if (!_supabase) throw new Error('Database not initialized - call initDb first');
+  const { data, error } = await _supabase
     .from('training_days')
     .insert({
       user_id: getUserId(),
@@ -88,7 +94,8 @@ async function createTrainingDay({ name }) {
  * Update a training day (name or sort_order).
  */
 async function updateTrainingDay(id, updates) {
-  const { data, error } = await supabase
+  if (!_supabase) throw new Error('Database not initialized - call initDb first');
+  const { data, error } = await _supabase
     .from('training_days')
     .update(updates)
     .eq('id', id)
@@ -103,7 +110,7 @@ async function updateTrainingDay(id, updates) {
  */
 async function deleteTrainingDay(id) {
   // First check if any exercises reference this day
-  const { data: exercises, error: exErr } = await supabase
+  const { data: exercises, error: exErr } = await _supabase
     .from('exercises')
     .select('id')
     .eq('training_day_id', id)
@@ -113,7 +120,7 @@ async function deleteTrainingDay(id) {
   if (exercises && exercises.length > 0) {
     throw new Error('Cannot delete day with exercises');
   }
-  const { error } = await supabase
+  const { error } = await _supabase
     .from('training_days')
     .delete()
     .eq('id', id)
@@ -125,7 +132,7 @@ async function deleteTrainingDay(id) {
  * Get the next sort_order for a new training day.
  */
 async function getNextTrainingDaySortOrder() {
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('training_days')
     .select('sort_order')
     .eq('user_id', getUserId())
@@ -163,7 +170,7 @@ async function getExercises(trainingDayId) {
  * Create a new exercise for the current user.
  */
 async function createExercise({ name, trainingDayId }) {
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('exercises')
     .insert({
       user_id: getUserId(),
@@ -181,7 +188,7 @@ async function createExercise({ name, trainingDayId }) {
  * Update an exercise (name, training_day_id, sort_order, starred).
  */
 async function updateExercise(id, updates) {
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('exercises')
     .update(updates)
     .eq('id', id)
@@ -195,7 +202,7 @@ async function updateExercise(id, updates) {
  * Delete an exercise.
  */
 async function deleteExercise(id) {
-  const { error } = await supabase
+  const { error } = await _supabase
     .from('exercises')
     .delete()
     .eq('id', id)
@@ -207,7 +214,7 @@ async function deleteExercise(id) {
  * Get the next sort_order for a new exercise within a training day.
  */
 async function getNextExerciseSortOrder(trainingDayId) {
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('exercises')
     .select('sort_order')
     .eq('user_id', getUserId())
@@ -222,7 +229,7 @@ async function getNextExerciseSortOrder(trainingDayId) {
  * Toggle an exercise's starred status.
  */
 async function toggleExerciseStar(id) {
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('exercises')
     .select('starred')
     .eq('id', id)
@@ -230,7 +237,7 @@ async function toggleExerciseStar(id) {
     .single();
   if (error) throw error;
   const newStarred = !data.starred;
-  const { data: updated, error: updErr } = await supabase
+  const { data: updated, error: updErr } = await _supabase
     .from('exercises')
     .update({ starred: newStarred })
     .eq('id', id)
@@ -251,7 +258,7 @@ async function toggleExerciseStar(id) {
  * Returns the session object.
  */
 async function startWorkoutSession(trainingDayId) {
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('workout_sessions')
     .insert({
       user_id: getUserId(),
@@ -268,7 +275,7 @@ async function startWorkoutSession(trainingDayId) {
  * Complete the workout session (sets have been logged).
  */
 async function completeWorkoutSession(sessionId) {
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('workout_sessions')
     .update({
       completed_at: new Date().toISOString(),
@@ -285,7 +292,7 @@ async function completeWorkoutSession(sessionId) {
  * Abort a workout session (user canceled mid-workout).
  */
 async function abortWorkoutSession(sessionId) {
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('workout_sessions')
     .update({
       completed_at: new Date().toISOString(),
@@ -303,7 +310,7 @@ async function abortWorkoutSession(sessionId) {
  * Optimistic UI: returns immediately, errors handled via retry queue.
  */
 async function logWorkoutSet({ sessionId, exerciseId, setNumber, weight, reps, unit, done, failed }) {
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('workout_sets')
     .insert({
       user_id: getUserId(),
@@ -325,7 +332,7 @@ async function logWorkoutSet({ sessionId, exerciseId, setNumber, weight, reps, u
  * Get all sets for a given session (used for history/hydration).
  */
 async function getSessionSets(sessionId) {
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('workout_sets')
     .select('*')
     .eq('session_id', sessionId)
@@ -339,7 +346,7 @@ async function getSessionSets(sessionId) {
  * Get recent workout sessions for the user (for history tab).
  */
 async function getRecentSessions(limit = 10) {
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('workout_sessions')
     .select('*, training_days(name)')
     .eq('user_id', getUserId())
@@ -359,7 +366,7 @@ async function getRecentSessions(limit = 10) {
  * Get user settings (unit preference, active training day, etc.).
  */
 async function getUserSettings() {
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('user_settings')
     .select('*')
     .eq('user_id', getUserId())
@@ -376,7 +383,7 @@ async function getUserSettings() {
  * Update user settings.
  */
 async function updateUserSettings(updates) {
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('user_settings')
     .upsert({
       user_id: getUserId(),
@@ -404,7 +411,7 @@ async function migrateFromLocalStorage() {
 
   try {
     // Check if we already have data in Supabase (avoid double migration)
-    const { count } = await supabase
+    const { count } = await _supabase
       .from('training_days')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', getUserId());
@@ -488,7 +495,7 @@ async function migrateV4Data(data) {
 
   // 1. Create training days
   for (const [index, oldDay] of data.days.entries()) {
-    const { data: newDay, error } = await supabase
+    const { data: newDay, error } = await _supabase
       .from('training_days')
       .insert({
         user_id: getUserId(),
@@ -514,7 +521,7 @@ async function migrateV4Data(data) {
         starred: oldLift.starred ?? false
       };
 
-      const { data: newExercise, error } = await supabase
+      const { data: newExercise, error } = await _supabase
         .from('exercises')
         .insert(exerciseData)
         .select()
@@ -574,7 +581,7 @@ async function migrateV4Data(data) {
  */
 async function migrateV3Data(lifts) {
   // Create a default training day for all lifts
-  const { data: day, error } = await supabase
+  const { data: day, error } = await _supabase
     .from('training_days')
     .insert({
       user_id: getUserId(),
@@ -597,7 +604,7 @@ async function migrateV3Data(lifts) {
       starred: oldLift.starred ?? false
     };
 
-    const { data: newExercise, error } = await supabase
+    const { data: newExercise, error } = await _supabase
       .from('exercises')
       .insert(exerciseData)
       .select()

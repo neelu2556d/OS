@@ -620,7 +620,8 @@ async function getOrCreateTodaySession() {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  const { data: sessions, error } = await db.supabase
+  const dbInstance = db.getDb();
+  const { data: sessions, error } = await dbInstance.supabase
     .from('workout_sessions')
     .select('id, completed_at')
     .eq('user_id', db.getUserId())
