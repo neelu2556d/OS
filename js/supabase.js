@@ -5,7 +5,7 @@
 // Security is enforced by Supabase Auth + Row Level Security (RLS),
 // not by hiding keys. The anon key is designed to be public.
 
-// The Supabase client is created globally on window in index.html
+// The Supabase client is set globally on window in index.html
 // This file exports getSupabase() for other modules to use.
 
 function getSupabase() {

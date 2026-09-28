@@ -5,12 +5,16 @@
 let _initialized = false;
 let _userId = null;
 let _migrationDone = false;
+let _supabase = null;
 
 /**
  * Initialize the database connection and user context.
  * Called after authentication.
  */
 async function initDb(userId) {
+  // Get supabase client from global (set by index.html)
+  _supabase = window._sbClient;
+  if (!_supabase) throw new Error('Supabase client not initialized - check index.html');
   _userId = userId;
   _initialized = true;
   // Perform one-time migration if needed
@@ -22,6 +26,13 @@ async function initDb(userId) {
  */
 function getUserId() {
   return _userId;
+}
+
+/**
+ * Get the Supabase client (used by other modules)
+ */
+function getSupabase() {
+  return _supabase;
 }
 
 /**

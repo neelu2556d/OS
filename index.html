@@ -177,20 +177,31 @@
           document.getElementById('authOverlay').style.display = 'flex';
           document.getElementById('appRoot').style.display = 'none';
           document.getElementById('signInBtn').onclick = async () => {
+            const btn = document.getElementById('signInBtn');
+            btn.disabled = true;
+            btn.textContent = 'Signing in...';
             try {
-              const { data } = await auth.signInWithGoogle();
+              await auth.signInWithGoogle();
               // Google OAuth redirects back here; after redirect the
               // onAuthStateChange handler fires and user is restored.
               // If we get here without a redirect, trigger a re-check.
               await auth.initAuth();
-              user = auth.getCurrentUser();
-              if (!user) throw new Error('Google sign-in failed — no session');
+              const signedInUser = auth.getCurrentUser();
+              if (!signedInUser) throw new Error('Google sign-in failed — no session');
               // After sign-in, load user data and enter the app
               await db.ensureProfileAndLoadData();
               app.init();
             } catch (err) {
               console.error('Sign in error:', err);
-              alert('Google sign-in failed. Please try again.');
+              btn.disabled = false;
+              btn.textContent = 'Continue with Google';
+              // Show visible error on the login page
+              const errorDiv = document.createElement('div');
+              errorDiv.style.cssText = 'color: #e0767b; margin: 10px; padding: 10px; background: rgba(224, 42, 59, 0.1); border-radius: 5px; border: 1px solid #e0767b; text-align: center;';
+              errorDiv.innerHTML = `<strong>Sign-in failed:</strong> ${err.message}`;
+              const overlay = document.getElementById('authOverlay');
+              if (overlay) overlay.appendChild(errorDiv);
+              setTimeout(() => { if (errorDiv.parentNode) errorDiv.parentNode.removeChild(errorDiv); }, 8000);
             }
           };
           return;
