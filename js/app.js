@@ -758,11 +758,6 @@ function showCelebration(lifts, totalSets, prs) {
 // ============================================================
 
 const LB = 0.45359237;
-const wDisp = kg => UNIT === 'lb' ? Math.round(kg / LB * 2) / 2 : Math.round(kg * 100) / 100;
-const wKg = v => UNIT === 'lb' ? Math.round(v * LB * 1000) / 1000 : v;
-const uLabel = perHand => UNIT + (perHand ? '/ea' : '');
-const nudgeDefault = () => UNIT === 'lb' ? 5 : 2.5;
-const nudgeStep = () => UNIT === 'lb' ? 2.5 : 1.25;
 
 /**
  * Set the unit preference and persist to Supabase.
@@ -1017,12 +1012,6 @@ function paintProgress() {
   document.getElementById('progText').textContent = `${logged} / ${total}`;
 }
 
-function wDisp(kg) { return UNIT === 'lb' ? Math.round(kg / LB * 2) / 2 : Math.round(kg * 100) / 100; }
-function wKg(v)  { return UNIT === 'lb' ? Math.round(v * LB * 1000) / 1000 : v; }
-function uLabel(perHand) { return UNIT + (perHand ? '/ea' : ''); }
-function nudgeDefault() { return UNIT === 'lb' ? 5 : 2.5; }
-function nudgeStep() { return UNIT === 'lb' ? 2.5 : 1.25; }
-
 // History and progressive overload helpers
 const hist = (base, step, reps) => Array.from({length:6}, (_,i) => ({ w: base + i*step, r: reps }));
 const offsetDate = (days) => {
@@ -1038,7 +1027,6 @@ const beatsPrevBest = (lift, set) => {
 };
 
 // UID generator (matches original)
-const uid = () => 'l' + Math.random().toString(36).slice(2,9);
 
 // Blank sets generator
 const blankSets = n => Array.from({length:n}, () => ({ weight:null, reps:null, done:false, failed:false }));
