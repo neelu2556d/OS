@@ -35,6 +35,47 @@ async function initAuth() {
 }
 
 /**
+ * Sign in with Email Magic Link via Supabase.
+ * Shows visible error messages on the login page instead of silently failing.
+ */
+async function signInWithEmail(email) {
+  const sb = getSupabase();
+  if (!sb) {
+    // Show error on login page
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = 'color: #e0767b; margin: 10px; padding: 10px; background: rgba(224, 42, 59, 0.1); border-radius: 5px; border: 1px solid #e0767b; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999;';
+    errorDiv.innerHTML = '<strong>Authentication Error:</strong> Supabase client not initialized';
+    document.body.appendChild(errorDiv);
+    setTimeout(() => document.body.removeChild(errorDiv), 5000);
+    throw new Error('Supabase client not initialized');
+  }
+
+  try {
+    const { data, error } = await sb.auth.signInWithOtp({
+      email: email,
+      options: {
+        emailRedirectTo: window.location.origin + window.location.pathname,
+      }
+    });
+
+    if (error) {
+      // Show error on login page
+      const errorDiv = document.createElement('div');
+      errorDiv.style.cssText = 'color: #e0767b; margin: 10px; padding: 10px; background: rgba(224, 42, 59, 0.1); border-radius: 5px; border: 1px solid #e0767b; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999;';
+      errorDiv.innerHTML = `<strong>Email Sign-In Error:</strong> ${error.message}<br><small>Check your Supabase email authentication settings.</small>`;
+      document.body.appendChild(errorDiv);
+      setTimeout(() => document.body.removeChild(errorDiv), 5000);
+      throw error;
+    }
+
+    return data;
+  } catch (err) {
+    // Re-throw for the caller to handle, but error already shown on page
+    throw err;
+  }
+}
+
+/**
  * Sign in with Google OAuth via Supabase.
  * Shows visible error messages on the login page instead of silently failing.
  */
@@ -126,3 +167,16 @@ function getSession() {
 function getAuthHeaders() {
   return { Authorization: `Bearer ${_user?.access_token || ''}` };
 }
+
+// Export all auth functions for use by main module
+export {
+  initAuth,
+  signInWithGoogle,
+  signInWithEmail,
+  signOut,
+  getCurrentUser,
+  getUserId,
+  onAuthStateChange,
+  getSession,
+  getAuthHeaders
+};

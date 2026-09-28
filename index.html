@@ -47,8 +47,11 @@
   <div id="authOverlay">
     <h1>The Living Logger</h1>
     <p>Your training, logged.</p>
-    <button class="google-btn" id="signInBtn">Continue with Google</button>
-    <p class="subtle">Your workouts sync securely across devices.</p>
+    <div style="display:flex;flex-direction:column;gap:12px;align-items:center;width:260px">
+      <input type="email" id="emailInput" placeholder="Enter your email" style="width:100%;padding:12px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;font-size:16px;font-family:var(--sans);outline:none;" />
+      <button class="google-btn" id="signInBtn" style="width:100%">Sign In</button>
+    </div>
+    <p class="subtle" style="margin-top:12px">No password needed — we'll send a magic link</p>
   </div>
 
   <!-- Main app root (hidden until user is authenticated) -->
@@ -151,7 +154,7 @@
     <script type="module">
       // ── Supabase & auth bootstrap ──────────────────────────────────
       import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2@latest/+esm';
-      import auth from './js/auth.js';
+      import { initAuth, signInWithEmail, signInWithGoogle, getCurrentUser } from './js/auth.js';
       import db from './js/database.js';
       import app from './js/app.js';
 
@@ -177,24 +180,44 @@
           document.getElementById('authOverlay').style.display = 'flex';
           document.getElementById('appRoot').style.display = 'none';
           document.getElementById('signInBtn').onclick = async () => {
+            console.log('Sign in button clicked');
             const btn = document.getElementById('signInBtn');
+            const emailInput = document.getElementById('emailInput');
+            const email = emailInput?.value?.trim();
+            console.log('Email entered:', email);
+            console.log('auth module:', auth);
+            console.log('auth.signInWithEmail:', auth.signInWithEmail);
+
+            if (!email) {
+              btn.disabled = false;
+              btn.textContent = 'Sign In';
+              // Show error
+              const errorDiv = document.createElement('div');
+              errorDiv.style.cssText = 'color: #e0767b; margin: 10px; padding: 10px; background: rgba(224, 42, 59, 0.1); border-radius: 5px; border: 1px solid #e0767b; text-align: center;';
+              errorDiv.innerHTML = '<strong>Please enter your email address</strong>';
+              const overlay = document.getElementById('authOverlay');
+              if (overlay) overlay.appendChild(errorDiv);
+              setTimeout(() => { if (errorDiv.parentNode) errorDiv.parentNode.removeChild(errorDiv); }, 5000);
+              return;
+            }
+
             btn.disabled = true;
-            btn.textContent = 'Signing in...';
+            btn.textContent = 'Sending magic link...';
             try {
-              await auth.signInWithGoogle();
-              // Google OAuth redirects back here; after redirect the
-              // onAuthStateChange handler fires and user is restored.
-              // If we get here without a redirect, trigger a re-check.
-              await auth.initAuth();
-              const signedInUser = auth.getCurrentUser();
-              if (!signedInUser) throw new Error('Google sign-in failed — no session');
-              // After sign-in, load user data and enter the app
-              await db.ensureProfileAndLoadData();
-              app.init();
+              await auth.signInWithEmail(email);
+              // Show success message
+              btn.textContent = 'Check your email!';
+              const overlay = document.getElementById('authOverlay');
+              if (overlay) {
+                const successDiv = document.createElement('div');
+                successDiv.style.cssText = 'color: #6EE7B7; margin: 10px; padding: 10px; background: rgba(110, 231, 183, 0.1); border-radius: 5px; border: 1px solid #6EE7B7; text-align: center;';
+                successDiv.innerHTML = '<strong>Magic link sent!</strong><br>Check your email and click the link to sign in.';
+                overlay.appendChild(successDiv);
+              }
             } catch (err) {
               console.error('Sign in error:', err);
               btn.disabled = false;
-              btn.textContent = 'Continue with Google';
+              btn.textContent = 'Sign In';
               // Show visible error on the login page
               const errorDiv = document.createElement('div');
               errorDiv.style.cssText = 'color: #e0767b; margin: 10px; padding: 10px; background: rgba(224, 42, 59, 0.1); border-radius: 5px; border: 1px solid #e0767b; text-align: center;';
