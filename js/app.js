@@ -2,8 +2,6 @@
 // Recreates the original logger's UI and state management
 // but reads/writes from Supabase instead of localStorage
 
-import { getSupabase } from './supabase.js';
-import * as auth from './js/auth.js';
 import db from './js/database.js';
 
 // Global state (mirrors original logger's DATA/LIFTS)
