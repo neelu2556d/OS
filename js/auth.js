@@ -103,7 +103,7 @@ async function signInWithGoogle() {
       // Show error on login page
       const errorDiv = document.createElement('div');
       errorDiv.style.cssText = 'color: #e0767b; margin: 10px; padding: 10px; background: rgba(224, 42, 59, 0.1); border-radius: 5px; border: 1px solid #e0767b; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999;';
-      errorDiv.innerHTML = `<strong>Google Sign-In Error:</strong> ${error.message}<br><small>Check your Supabase Google OAuth configuration.</small>`;
+      errorDiv.innerHTML = '<strong>Google Sign-In Error:</strong> ' + error.message + '<br><small>Check your Supabase Google OAuth configuration.</small>';
       document.body.appendChild(errorDiv);
       setTimeout(() => document.body.removeChild(errorDiv), 5000);
       throw error;
