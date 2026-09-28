@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Workout logger</title>
+<!--
+  THE LIVING LOGGER. One self-contained file that grows one episode at a time.
+  Google Sign-In → Supabase Auth → Persistent database
+  Pure black, mint accent, Inter. Open it in a browser and it just works.
+-->
+<style>
+  :root{
+    --bg:#000; --fg:#fff;
+    --mint:#6EE7B7; --mint-cool:#A7F3D0; --mint-hover:#5dd6a6; --amber:#F59E0B; --rose:#e0767b; --gold:#f1cf7a;
+    --muted:rgba(255,255,255,.5); --muted-strong:rgba(255,255,255,.72);
+    --rule:rgba(255,255,255,.08); --rule-strong:rgba(255,255,255,.16);
+    --card:rgba(255,255,255,.022);
+    --serif:'Instrument Serif','Newsreader',Georgia,serif;
+    --sans:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+    --ease:cubic-bezier(.16,1,.3,1); --spring:cubic-bezier(.34,1.56,.64,1);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  ::selection{background:rgba(110,231,183,.25);color:#fff}
+  html,body{background:var(--bg);min-height:100%}
+  body{font-family:var(--sans);color:var(--fg);-webkit-font-smoothing:antialiased;letter-spacing:-.006em;
+    padding:34px 18px 90px;display:block;overflow-x:hidden}
+  body.rc-open{padding-bottom:120px}   /* ep4: room so the rest coach can overlay */
+  body{background:var(--bg)}
+  /* ==== Google auth overlay ==== */
+  #authOverlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000}
+  #authOverlay h1{font-family:var(--serif);font-size:32px;margin-bottom:12px}
+  #authOverlay p{color:var(--muted);margin-bottom:24px;max-width:600px;text-align:center;font-size:16px}
+  #authOverlay .google-btn{background:none;border:none;padding:16px 32px;font-size:16px;color:var(--fg);font-family:var(--sans);cursor:pointer;border:1px solid var(--muted-strong);border-radius:8px;transition:background .2s,color .2s}
+  #authOverlay .google-btn:hover{background:var(--mint);color:#04140d}
+  #authOverlay .google-btn:focus{outline:none;box-shadow:0 0 0 3px rgba(110,231,183,.15)}
+  #authOverlay .subtle{color:var(--muted);font-size:13px;margin-top:12px}
+  /* ==== Login-required UI guard ==== */
+  #appRoot{display:none}
+  body.auth-required #appRoot{display:none}
+  body.auth-required #authOverlay{display:flex}
+</style>
+</head>
+<body>
+  <!-- Google auth overlay (shown before the logger loads) -->
+  <div id="authOverlay">
+    <h1>The Living Logger</h1>
+    <p>Your training, logged.</p>
+    <button class="google-btn" id="signInBtn">Continue with Google</button>
+    <p class="subtle">Your workouts sync securely across devices.</p>
+  </div>
+
+  <!-- Main app root (hidden until user is authenticated) -->
+  <main id="appRoot">
+    <!-- ==== Chart (Episode 1) — progressive overload history ==== -->
+    <section class="chart-section" id="chartSection" style="display:none">
+      <h2 style="color:var(--mint);margin-bottom:16px;font-family:var(--serif)">Progressive Overload</h2>
+      <p class="muted" style="font-size:13px">Tap a lift in the library or logger to see its top-set weight history.</p>
+    </section>
+
+    <!-- ==== Main logger UI ==== -->
+    <div id="loggerRoot">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-left">
+          <button class="nav-btn" id="boardBtn" aria-label="Today's session"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg> Today</button>
+          <button class="nav-btn" id="libraryBtn" aria-label="Exercise library"><svg viewBox="0 0 24 24"><path d="M12 3 20 7 12 11 4 7Z"/></svg> Library</button>
+          <button class="nav-btn" id="settingsBtn" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14l2-7 6 2-6 2Z"/></svg> Settings</button>
+        </div>
+        <div class="header-right">
+          <div class="unit-toggle" id="unitToggle">
+            <button class="unit-opt on" data-u="kg">kg</button>
+            <button class="unit-opt" data-u="lb">lb</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Today's session board -->
+      <section id="board" class="board" style="display:none">
+        <div class="board-head">
+          <h1 class="board-h1">Today's session</h1>
+          <p class="board-sub">Select a training day</p>
+        </div>
+        <div class="board-grid" id="boardGrid"></div>
+      </section>
+
+      <!-- Library overlay -->
+      <section id="library" class="library-overlay" style="display:none">
+        <div class="veil" id="libraryVeil"></div>
+        <div class="wrap">
+          <h2 class="veil-h2" style="color:var(--mint)">Exercise library</h2>
+          <p class="veil-p" style="color:var(--muted)">Search or scroll to find a lift.</p>
+          <div class="library-grid" id="libraryGrid"></div>
+          <div class="veil-footer">
+            <button class="btn-mint" id="dayNewBtn">New day</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Settings sheet -->
+      <section id="settingsSheet" class="sheet" style="display:none">
+        <div class="sheet-eyebrow">Settings</div>
+        <div class="sheet-title">Settings</div>
+        <div class="card">
+          <div class="card-head">
+            <div class="card-head-label">Unit</div>
+          </div>
+          <div class="card-body">
+            <div class="su-units" id="suUnits"></div>
+          </div>
+          <div class="card-foot">
+            <button class="btn-reset" id="resetAllBtn">Reset all data</button>
+            <button class="btn-mint" id="closeSheet">Close</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Finish session -->
+      <section class="finish-session">
+        <button class="finish" id="finishBtn"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg> Finish session</button>
+      </section>
+
+      <!-- Celebration (session complete) -->
+      <div id="cele" class="cele" style="display:none"></div>
+
+      <!-- Library grid rendered by JS -->
+      <div id="libraryGrid" class="library-grid"></div>
+    </div>
+
+    <!-- Rest timer coach overlay -->
+    <div id="rcEl" class="rc-overlay" style="display:none">
+      <div class="rc-wrapper">
+        <div class="rc-header">
+          <span class="rc-liftName" id="rcLiftName"></span>
+          <button class="rc-ask" id="rcAskBtn" aria-label="Ask Claude for form cue">Q</button>
+        </div>
+        <div class="rc-timer" id="rcTime"></div>
+        <div class="rc-progress-bar">
+          <div class="rc-progress"></div>
+        </div>
+        <div class="rc-buttons">
+          <button id="rcMinus" aria-label="Decrease rest"><svg viewBox="0 0 24 24"><path d="M17 5H7"/></svg></button>
+          <span id="rcRestVal">150</span>
+          <button id="rcPlus" aria-label="Increase rest"><svg viewBox="0 0 24 24"><path d="M7 5H17"/></svg></button>
+          <button id="rcDismiss" aria-dismiss="Dismiss" style="margin-left:auto">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      // ── Supabase & auth bootstrap ──────────────────────────────────
+      import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2@latest/+esm';
+      import auth from './js/auth.js';
+      import db from './js/database.js';
+      import app from './js/app.js';
+
+      // ── Replace Supabase placeholders with real credentials ──────────
+      const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co';
+      const SUPABASE_ANON_KEY = 'YOUR-ANON-KEY-HERE';
+
+      // Initialize Supabase client
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      // Set global for other modules
+      window._sbClient = supabase;
+
+      // ── Authentication flow ────────────────────────────────────────
+      (async function bootstrapAuth() {
+        // Initialize auth system and restore session
+        await auth.initAuth();
+
+        const user = auth.getCurrentUser();
+
+        if (!user) {
+          // Show auth overlay, hide app
+          document.getElementById('authOverlay').style.display = 'flex';
+          document.getElementById('appRoot').style.display = 'none';
+          document.getElementById('signInBtn').onclick = async () => {
+            try {
+              const { data } = await auth.signInWithGoogle();
+              // Google OAuth redirects back here; after redirect the
+              // onAuthStateChange handler fires and user is restored.
+              // If we get here without a redirect, trigger a re-check.
+              await auth.initAuth();
+              user = auth.getCurrentUser();
+              if (!user) throw new Error('Google sign-in failed — no session');
+              // After sign-in, load user data and enter the app
+              await db.ensureProfileAndLoadData();
+              app.init();
+            } catch (err) {
+              console.error('Sign in error:', err);
+              alert('Google sign-in failed. Please try again.');
+            }
+          };
+          return;
+        }
+
+        // User already signed in — restore session
+        await db.ensureProfileAndLoadData();
+        app.init();
+      })();
+
+      // ── Global error handler ───────────────────────────────────────
+      window.addEventListener('error', (e) => {
+        console.error('Uncaught error:', e.error);
+      });
+    </script>
+  </main>
+  <!-- end authOverlay / appRoot -->
+</body>
+</html>
