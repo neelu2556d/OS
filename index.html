@@ -168,6 +168,14 @@
       // Set global for other modules
       window._sbClient = supabase;
 
+      // Create auth object for compatibility with existing code
+      const auth = {
+        initAuth,
+        signInWithEmail,
+        signInWithGoogle,
+        getCurrentUser
+      };
+
       // ── Authentication flow ────────────────────────────────────────
       (async function bootstrapAuth() {
         // Initialize auth system and restore session
