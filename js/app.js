@@ -513,7 +513,7 @@ function openSettings() {
  * Close any open sheet.
  */
 function closeSheet() {
-  showView('board';
+  showView('board');
 }
 
 /**
