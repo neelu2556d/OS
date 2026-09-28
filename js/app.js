@@ -18,7 +18,7 @@ let boardEl, libraryEl, settingsSheetEl, finishBtn, celeEl;
 let unitToggleEl, suUnitsEl, resetAllBtn, closeSheetBtn;
 let libOpenBtn, reorderBtn, boardBtn, libraryBtn, settingsBtn;
 let finishBtnEl;
-let rcEl, rcLiftName, rcTime, rcAskBtn, rcMinus, rcPlus, rcDismiss;
+let rcEl, rcLiftName, rcTime, rcAskBtn, rcMinus, rcPlus;
 
 // ============================================================
 // INITIALIZATION
@@ -76,7 +76,6 @@ function cacheElements() {
   rcAskBtn = document.getElementById('rcAskBtn');
   rcMinus = document.getElementById('rcMinus');
   rcPlus = document.getElementById('rcPlus');
-  rcDismiss = document.getElementById('rcDismiss');
 }
 
 /**
@@ -111,7 +110,7 @@ function setupEventListeners() {
   rcAskBtn.onclock = rcAsk;
   rcMinus.onclick = () => rcAdd(-15);
   rcPlus.onclick = () => rcAdd(15);
-  rcDismiss.onclick = rcDismiss;
+  window.rcDismiss = rcDismiss;
 
   // Close sheets on backdrop click
   document.getElementById('libraryVeil').onclick = closeSheet;
@@ -1076,7 +1075,5 @@ export {
   UNIT,
   wDisp,
   wKg,
-  uLabel,
-  restCoachStart,
-  rcDismiss
+  uLabel
 };
